@@ -1,0 +1,26 @@
+# ============================================
+# ARQUIVO: requirements.txt
+# OBJETIVO: Lista de dependências do projeto
+# ============================================
+# 
+# Para instalar todas de uma vez:
+# pip install -r requirements.txt
+# ============================================
+
+# === Processamento de Dados ===
+# pandas: Lê e manipula a planilha Excel (filtra, agrupa, etc)
+pandas==2.2.0
+
+# openpyxl: Permite pandas ler arquivos .xlsx (Excel moderno)
+openpyxl==3.1.2
+
+# === Geração de Imagens ===
+# matplotlib: Cria os gráficos e tabelas visuais
+matplotlib==3.8.2
+
+# pillow: Manipulação de imagens (salvar PNG, ajustar qualidade)
+pillow==10.2.0
+
+# === Utilitários de Data/Hora ===
+# python-dateutil: Facilita trabalhar com datas (converter formatos, etc)
+python-dateutil==2.8.2

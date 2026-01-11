@@ -1,0 +1,35 @@
+# ============================================
+# ARQUIVO: .gitignore
+# OBJETIVO: Ignorar arquivos que não devem ir para o Git
+# ============================================
+
+# === Python ===
+venv/                    # Ambiente virtual (cada um cria o seu)
+__pycache__/            # Cache do Python (arquivos .pyc)
+*.py[cod]               # Arquivos compilados
+*.so                    # Bibliotecas compiladas
+.Python
+
+# === Dados Sensíveis ===
+data/*.xlsx             # Planilhas com dados reais
+!data/.gitkeep          # Mas mantém a pasta data/
+
+# === Relatórios Gerados ===
+relatorios/*.png        # Imagens geradas (cada um gera as suas)
+relatorios/*.jpg
+!relatorios/.gitkeep    # Mas mantém a pasta relatorios/
+
+# === IDEs ===
+.vscode/                # Configurações do VSCode
+.idea/                  # Configurações do PyCharm
+*.swp                   # Arquivos temporários do Vim
+*.swo
+
+# === Sistema Operacional ===
+.DS_Store               # MacOS
+Thumbs.db               # Windows
+desktop.ini             # Windows
+
+# === Logs ===
+*.log                   # Arquivos de log
+logs/
