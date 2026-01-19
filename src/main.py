@@ -12,10 +12,14 @@ Ele coordena todas as etapas:
 3. Filtrar e processar dados
 4. Agrupar por operação
 5. Gerar imagens dos relatórios
-6. Mostrar resumo final
+6. Gerar Excel do resumo geral
+7. Mostrar resumo final
 
 COMO EXECUTAR:
     python src/main.py
+
+NOVIDADE:
+    Agora também gera arquivo Excel do resumo geral!
 
 ============================================
 """
@@ -32,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import config
 import processar_dados
 import gerar_imagem
+import pandas as pd
 
 
 # ============================================
@@ -122,6 +127,84 @@ def obter_datas():
 
 
 # ============================================
+# FUNÇÃO: GERAR EXCEL DO RESUMO GERAL
+# ============================================
+
+def gerar_excel_resumo(df_resumo, periodo_str):
+    """
+    Gera arquivo Excel do resumo geral
+    
+    Args:
+        df_resumo: DataFrame com resumo (já com coluna # adicionada)
+        periodo_str: String do período (ex: "05/01/2026 a 07/01/2026")
+    
+    Returns:
+        Path do arquivo gerado
+    """
+    # Nome do arquivo
+    # Exemplo: resumo_geral_05-01_a_07-01.xlsx
+    periodo_arquivo = periodo_str.replace('/', '-')
+    nome_arquivo = f"resumo_geral_{periodo_arquivo}.xlsx"
+    
+    # Caminho completo
+    caminho = config.RELATORIOS_DIR / nome_arquivo
+    
+    # Copiar DataFrame para não modificar original
+    df_excel = df_resumo.copy()
+    
+    # Adicionar coluna de posição (igual à imagem)
+    posicoes = []
+    for idx in range(len(df_excel)):
+        if df_excel.iloc[idx]['Nome da Região'] == 'TOTAL':
+            posicoes.append('')
+        else:
+            posicoes.append(idx + 1)
+    
+    # Inserir coluna no início
+    df_excel.insert(0, '#', posicoes)
+    
+    # Salvar Excel
+    # engine='openpyxl': usa biblioteca openpyxl
+    # index=False: não salva índice
+    # sheet_name: nome da aba
+    with pd.ExcelWriter(caminho, engine='openpyxl') as writer:
+        df_excel.to_excel(writer, sheet_name='Resumo Geral', index=False)
+        
+        # Pegar worksheet para formatar
+        worksheet = writer.sheets['Resumo Geral']
+        
+        # Ajustar largura das colunas
+        worksheet.column_dimensions['A'].width = 8   # Coluna #
+        worksheet.column_dimensions['B'].width = 30  # Nome da Região
+        worksheet.column_dimensions['C'].width = 20  # Sum of Fatur.
+        
+        # Formatar cabeçalho (linha 1)
+        from openpyxl.styles import Font, PatternFill, Alignment
+        
+        for cell in worksheet[1]:
+            # Negrito + fundo azul + texto branco
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Formatar linha TOTAL (última linha)
+        ultima_linha = len(df_excel) + 1
+        for cell in worksheet[ultima_linha]:
+            # Negrito + fundo cinza
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Centralizar coluna #
+        for row in range(2, ultima_linha + 1):
+            worksheet[f'A{row}'].alignment = Alignment(horizontal='center')
+    
+    print(f"   ✅ Excel salvo: {nome_arquivo}")
+    
+    return caminho
+
+
+# ============================================
 # FUNÇÃO PRINCIPAL
 # ============================================
 
@@ -137,7 +220,8 @@ def main():
     5. Agrupar por operação
     6. Gerar resumo
     7. Gerar imagens
-    8. Mostrar resultado
+    8. Gerar Excel do resumo
+    9. Mostrar resultado
     
     Tratamento de erros:
     - KeyboardInterrupt: Ctrl+C (cancela execução)
@@ -150,14 +234,14 @@ def main():
     limpar_tela()
     print("\n" + "="*60)
     print("  🚀 GERADOR DE RELATÓRIOS - VERSÃO MANUAL")
-    print("  📊 Gera imagens PNG dos relatórios")
+    print("  📊 Gera imagens PNG + Excel do resumo")
     print("="*60 + "\n")
     
     try:
         # ========================================
         # ETAPA 1: CARREGAR PLANILHA
         # ========================================
-        print("📂 ETAPA 1/6: Carregando dados da planilha...")
+        print("📂 ETAPA 1/7: Carregando dados da planilha...")
         print(f"   Arquivo: {config.CAMINHO_PLANILHA.name}")
         print()
         
@@ -177,7 +261,7 @@ def main():
         # ========================================
         # ETAPA 2: OBTER DATAS
         # ========================================
-        print("\n📅 ETAPA 2/6: Definindo período...")
+        print("\n📅 ETAPA 2/7: Definindo período...")
         data_inicio, data_fim = obter_datas()
         
         # Criar string do período para usar nas imagens
@@ -187,7 +271,7 @@ def main():
         # ========================================
         # ETAPA 3: FILTRAR DADOS
         # ========================================
-        print(f"\n📊 ETAPA 3/6: Filtrando e processando dados...")
+        print(f"\n📊 ETAPA 3/7: Filtrando e processando dados...")
         
         df_filtrado = processar_dados.filtrar_dados(
             transacoes, 
@@ -211,7 +295,7 @@ def main():
         # ========================================
         # ETAPA 4: AGRUPAR POR OPERAÇÃO
         # ========================================
-        print(f"\n📦 ETAPA 4/6: Agrupando por operação...")
+        print(f"\n📦 ETAPA 4/7: Agrupando por operação...")
         
         relatorios = processar_dados.agrupar_por_operacao(df_filtrado)
         
@@ -226,7 +310,7 @@ def main():
         # ========================================
         # ETAPA 5: GERAR RESUMO GERAL
         # ========================================
-        print(f"\n📋 ETAPA 5/6: Gerando resumo geral...")
+        print(f"\n📋 ETAPA 5/7: Gerando resumo geral...")
         
         df_resumo = processar_dados.gerar_resumo_geral(relatorios)
         
@@ -241,13 +325,22 @@ def main():
         # ========================================
         # ETAPA 6: GERAR IMAGENS
         # ========================================
-        print(f"\n🖼️  ETAPA 6/6: Gerando imagens...")
+        print(f"\n🖼️  ETAPA 6/7: Gerando imagens...")
         
         caminhos_imagens = gerar_imagem.gerar_todas_imagens(
             relatorios,
             df_resumo,
             periodo_str
         )
+        
+        # ========================================
+        # ETAPA 7: GERAR EXCEL DO RESUMO GERAL
+        # ========================================
+        print(f"\n📑 ETAPA 7/7: Gerando Excel do resumo geral...")
+        
+      
+        
+        caminho_excel = gerar_excel_resumo(df_resumo, periodo_str)
         
         # ========================================
         # SUCESSO! MOSTRAR RESUMO FINAL
@@ -260,6 +353,7 @@ def main():
         print(f"\n📊 ESTATÍSTICAS:")
         print(f"   • Total de operações: {len(relatorios)}")
         print(f"   • Total de imagens: {len(caminhos_imagens)}")
+        print(f"   • Excel do resumo: 1 arquivo")
         print(f"   • Valor total geral: R$ {total_geral:,.2f}")
         
         # Mostrar localização dos arquivos
@@ -267,11 +361,14 @@ def main():
         print(f"   {config.RELATORIOS_DIR.absolute()}")
         
         # Listar arquivos gerados
-        print(f"\n📄 ARQUIVOS GERADOS:")
+        print(f"\n📄 IMAGENS GERADAS:")
         for operacao in sorted(caminhos_imagens.keys()):
             caminho = caminhos_imagens[operacao]
             # Mostrar apenas nome do arquivo (não caminho completo)
             print(f"   • {caminho.name}")
+        
+        print(f"\n📑 EXCEL GERADO:")
+        print(f"   • {caminho_excel.name}")
         
         # ========================================
         # PRÓXIMOS PASSOS
@@ -280,6 +377,7 @@ def main():
         print(f"   1. Abra a pasta: {config.RELATORIOS_DIR}")
         print(f"   2. Envie cada imagem para o gerente correspondente")
         print(f"   3. Use WhatsApp para enviar manualmente")
+        print(f"   4. Excel do resumo: para referência geral")
         
         # Mostrar exemplo de mensagem
         print(f"\n💬 EXEMPLO DE MENSAGEM:")

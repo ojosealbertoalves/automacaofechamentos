@@ -13,6 +13,11 @@ Funções principais:
 3. gerar_imagem_resumo(): Cria imagem do resumo geral
 4. gerar_todas_imagens(): Gera todas as imagens de uma vez
 
+AJUSTES:
+- Fonte aumentada para 12 (relatórios) e 13 (resumo)
+- Coluna "#" adicionada no resumo geral (posição/ranking)
+- ⭐ NOVO: Largura da coluna "Entregador" ajustada para evitar cortes
+
 ============================================
 """
 
@@ -92,9 +97,8 @@ def gerar_imagem_relatorio(df: pd.DataFrame, operacao: str, periodo: str,
     # ========================================
     # CONFIGURAR FIGURA
     # ========================================
-    # figsize: tamanho da imagem (largura, altura) em polegadas
-    # max(8, len(df) * 0.4): altura mínima 8, cresce com número de linhas
-    fig, ax = plt.subplots(figsize=(14, max(8, len(df) * 0.4)))
+    # ⭐ Aumentado de 14 para 16 para mais espaço horizontal
+    fig, ax = plt.subplots(figsize=(16, max(8, len(df) * 0.4)))
     
     # Desligar eixos (não queremos gráfico, só tabela)
     ax.axis('tight')
@@ -168,10 +172,29 @@ def gerar_imagem_relatorio(df: pd.DataFrame, operacao: str, periodo: str,
     # ========================================
     # Desabilitar tamanho automático de fonte
     table.auto_set_font_size(False)
-    table.set_fontsize(9)
+    # Fonte aumentada: 12
+    table.set_fontsize(12)
     
-    # Ajustar escala: (largura, altura)
-    # scale(1, 2): mantém largura, dobra altura das células
+    # ⭐ AJUSTAR LARGURAS DAS COLUNAS
+    num_colunas = len(df_display.columns)
+    
+    # Primeira coluna (Entregador): 30% da largura total
+    largura_entregador = 0.30
+    # Demais colunas: dividem os 70% restantes
+    largura_outras = (1 - largura_entregador) / (num_colunas - 1)
+    
+    # Aplicar larguras customizadas
+    for j in range(num_colunas):
+        for i in range(len(df_display) + 1):  # +1 para incluir cabeçalho
+            cell = table[(i, j)]
+            if j == 0:
+                # Primeira coluna: mais larga
+                cell.set_width(largura_entregador)
+            else:
+                # Outras colunas: largura padrão
+                cell.set_width(largura_outras)
+    
+    # Ajustar altura das células
     table.scale(1, 2)
     
     # ========================================
@@ -197,10 +220,12 @@ def gerar_imagem_relatorio(df: pd.DataFrame, operacao: str, periodo: str,
         else:
             # ===== LINHAS NORMAIS =====
             if j == 0:
-                # Primeira coluna (nomes): fundo cinza
+                # ⭐ Primeira coluna (nomes): alinhar à esquerda + padding
+                cell.set_text_props(ha='left')  # horizontal alignment = left
                 cell.set_facecolor('#F2F2F2')
+                cell.PAD = 0.05  # Padding à esquerda
             else:
-                # Outras colunas: fundo branco
+                # Outras colunas: fundo branco, centralizado
                 cell.set_facecolor('white')
     
     # ========================================
@@ -238,8 +263,9 @@ def gerar_imagem_resumo(df_resumo: pd.DataFrame, periodo: str,
     """
     Gera imagem PNG do resumo geral (todas operações)
     
+    Adiciona coluna "#" com posição/ranking
     Similar ao relatório, mas mais simples:
-    - Apenas 2 colunas (Operação e Valor)
+    - 3 colunas: # (posição), Operação, Valor
     - Lista todas as operações
     - Total geral no final
     
@@ -267,11 +293,36 @@ def gerar_imagem_resumo(df_resumo: pd.DataFrame, periodo: str,
     plt.title(titulo, fontsize=16, fontweight='bold', pad=20)
     
     # ========================================
-    # PREPARAR DADOS
+    # PREPARAR DADOS COM COLUNA DE POSIÇÃO
     # ========================================
     df_display = df_resumo.copy()
     
-    # Formatar coluna de valores
+    # ⭐ ADICIONAR COLUNA DE POSIÇÃO
+    # Criar lista de números: 1, 2, 3, ..., (vazio para TOTAL)
+    posicoes = []
+    for idx in range(len(df_display)):
+        # Se for última linha (TOTAL), deixa vazio
+        if df_display.iloc[idx]['Nome da Região'] == 'TOTAL':
+            posicoes.append('')
+        else:
+            # Caso contrário, adiciona número sequencial
+            posicoes.append(str(idx + 1))
+    
+    # Inserir coluna "#" no início
+    # insert(posição, nome_coluna, valores)
+    df_display.insert(0, '#', posicoes)
+    
+    # Agora df_display tem 3 colunas:
+    # #  |  Nome da Região  |  Sum of Fatur.(R$)
+    # 1  |  GRANDE SÃO PAULO  |  R$ 76.721,39
+    # 2  |  GRANDE BELÉM      |  R$ 7.690,50
+    # ...
+    #    |  TOTAL            |  R$ 254.046,44
+    
+    # ========================================
+    # FORMATAR VALORES
+    # ========================================
+    # Formatar coluna de valores (índice 2)
     df_display['Sum of Fatur.(R$)'] = df_display['Sum of Fatur.(R$)'].apply(
         lambda x: formatar_valor(x) if isinstance(x, (int, float)) else x
     )
@@ -291,24 +342,33 @@ def gerar_imagem_resumo(df_resumo: pd.DataFrame, periodo: str,
     # ESTILIZAR
     # ========================================
     table.auto_set_font_size(False)
-    table.set_fontsize(10)
+    # Fonte aumentada: 13
+    table.set_fontsize(13)
     table.scale(1, 2.5)
     
     # Colorir células
     for (i, j), cell in table.get_celld().items():
         if i == 0:
-            # Cabeçalho
+            # ===== CABEÇALHO =====
             cell.set_text_props(weight='bold', color='white')
             cell.set_facecolor('#4472C4')
+            
         elif i == len(df_display):
-            # Linha TOTAL
-            cell.set_text_props(weight='bold')
+            # ===== LINHA TOTAL =====
+            cell.set_text_props(weight='bold', fontsize=14)  # Ainda maior
             cell.set_facecolor('#E7E6E6')
+            
         else:
-            # Dados normais
+            # ===== DADOS NORMAIS =====
             if j == 0:
+                # Coluna "#": fundo azul claro
+                cell.set_facecolor('#D9E2F3')
+                cell.set_text_props(weight='bold')
+            elif j == 1:
+                # Coluna "Nome da Região": fundo cinza
                 cell.set_facecolor('#F2F2F2')
             else:
+                # Coluna "Valor": fundo branco
                 cell.set_facecolor('white')
     
     # ========================================
@@ -344,7 +404,7 @@ def gerar_todas_imagens(relatorios: Dict[str, pd.DataFrame],
     - Nome do arquivo: operacao_formatada.png
     
     Também gera:
-    - resumo_geral.png
+    - resumo_geral.png (com coluna de posição)
     
     Args:
         relatorios: Dicionário {operacao: DataFrame}
@@ -394,7 +454,7 @@ def gerar_todas_imagens(relatorios: Dict[str, pd.DataFrame],
         caminhos[operacao] = caminho
     
     # ========================================
-    # GERAR RESUMO GERAL
+    # GERAR RESUMO GERAL (COM COLUNA #)
     # ========================================
     caminho_resumo = config.RELATORIOS_DIR / 'resumo_geral.png'
     gerar_imagem_resumo(df_resumo, periodo, caminho_resumo)
